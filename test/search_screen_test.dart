@@ -70,5 +70,12 @@ void main() {
     );
     expect(latestChange?.isFavorite, isTrue);
     expect(find.text('관심이 등록되었습니다'), findsOneWidget);
+
+    final SnackBar snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+    expect(snackBar.margin, const EdgeInsets.fromLTRB(16, 0, 16, 109));
+    expect(
+      snackBar.padding,
+      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
   });
 }

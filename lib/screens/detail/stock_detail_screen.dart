@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../theme/theme.dart';
 import '../../utils/utils.dart';
+import '../../widgets/favorite_snack_bar.dart';
 
 class StockDetailScreen extends StatefulWidget {
   const StockDetailScreen({
@@ -44,32 +45,7 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
   }
 
   void _showFavoriteMessage() {
-    final AppColors colors = context.colors;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: colors.surfaceOverlay,
-          content: Row(
-            children: <Widget>[
-              Icon(
-                _isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-                color: _isFavorite
-                    ? colors.favoriteActive
-                    : colors.favoriteInactive,
-                size: 22,
-              ),
-              const SizedBox(width: 8),
-              Text(_isFavorite ? '관심이 등록되었습니다' : '관심이 해제되었습니다'),
-            ],
-          ),
-          margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          duration: const Duration(milliseconds: 1400),
-        ),
-      );
+    showFavoriteSnackBar(context, isFavorite: _isFavorite, bottomMargin: 24);
   }
 
   @override
