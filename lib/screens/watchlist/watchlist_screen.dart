@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../theme/theme.dart';
 import '../../utils/utils.dart';
+import '../../widgets/app_bottom_tab_bar.dart';
+import '../search/search_screen.dart';
 
 class WatchlistScreen extends StatefulWidget {
   const WatchlistScreen({super.key, List<WatchlistEntry>? initialItems})
@@ -161,9 +163,32 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   void _openSearch() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (BuildContext context) => const SearchPlaceholderScreen(),
+        builder: (BuildContext context) => SearchScreen(
+          favoriteSymbols: _items
+              .map((WatchlistEntry entry) => entry.stock.symbol)
+              .toSet(),
+          onFavoriteChanged: _handleFavoriteChanged,
+        ),
       ),
     );
+  }
+
+  void _handleFavoriteChanged(FavoriteChange change) {
+    setState(() {
+      final int index = _items.indexWhere(
+        (WatchlistEntry entry) => entry.stock.symbol == change.stock.symbol,
+      );
+
+      if (change.isFavorite && index < 0) {
+        _items.add(WatchlistEntry(stock: change.stock));
+      } else if (!change.isFavorite && index >= 0) {
+        _items.removeAt(index);
+      }
+
+      if (_sort != WatchlistSort.name) {
+        _sortItems();
+      }
+    });
   }
 
   @override
@@ -507,234 +532,6 @@ class WatchlistEmptyState extends StatelessWidget {
                 fontWeight: AppTypography.regular,
                 height: 14 / 11,
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-enum AppTab { watchlist, search }
-
-class AppBottomTabBar extends StatelessWidget {
-  const AppBottomTabBar({
-    required this.selectedTab,
-    this.onWatchlistTap,
-    this.onSearchTap,
-    super.key,
-  });
-
-  final AppTab selectedTab;
-  final VoidCallback? onWatchlistTap;
-  final VoidCallback? onSearchTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppColors colors = context.colors;
-    final AppDimens dimens = context.dimens;
-    final double bottomPadding = MediaQuery.paddingOf(context).bottom;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceRaised,
-        border: Border(
-          top: BorderSide(
-            color: colors.borderSubtle,
-            width: dimens.borderHairline,
-          ),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          SizedBox(
-            height: 63,
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: BottomTabItem(
-                    label: '관심',
-                    icon: selectedTab == AppTab.watchlist
-                        ? Icons.star_rounded
-                        : Icons.star_border_rounded,
-                    selected: selectedTab == AppTab.watchlist,
-                    onTap: onWatchlistTap,
-                  ),
-                ),
-                Expanded(
-                  child: BottomTabItem(
-                    label: '검색',
-                    icon: Icons.search_rounded,
-                    selected: selectedTab == AppTab.search,
-                    onTap: onSearchTap,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: bottomPadding > 0 ? bottomPadding : 34,
-            child: Center(
-              child: bottomPadding > 0
-                  ? const SizedBox.shrink()
-                  : Container(
-                      width: 139,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: colors.textPrimary,
-                        borderRadius: BorderRadius.circular(2.5),
-                      ),
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class BottomTabItem extends StatelessWidget {
-  const BottomTabItem({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    this.onTap,
-    super.key,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppColors colors = context.colors;
-    final Color color = selected ? colors.navActive : colors.navInactive;
-
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Icon(icon, color: color, size: 26),
-            SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: AppTypography.regular,
-                height: 14 / 11,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class SearchPlaceholderScreen extends StatelessWidget {
-  const SearchPlaceholderScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final AppColors colors = context.colors;
-    final AppDimens dimens = context.dimens;
-
-    return Scaffold(
-      backgroundColor: colors.surfaceBase,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: <Widget>[
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                dimens.space4,
-                dimens.space3,
-                dimens.space4,
-                0,
-              ),
-              child: Container(
-                height: 40,
-                decoration: BoxDecoration(
-                  color: colors.surfaceRaised,
-                  borderRadius: BorderRadius.circular(dimens.radiusMd),
-                  border: Border.all(
-                    color: colors.borderStrong,
-                    width: dimens.borderHairline,
-                  ),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: dimens.space3),
-                child: Row(
-                  children: <Widget>[
-                    Icon(
-                      Icons.search_rounded,
-                      color: colors.textTertiary,
-                      size: 22,
-                    ),
-                    SizedBox(width: dimens.space2),
-                    Text(
-                      '종목명 또는 종목코드',
-                      style: TextStyle(
-                        color: colors.textTertiary,
-                        fontSize: 15,
-                        fontWeight: AppTypography.bold,
-                        height: 20 / 15,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      Icons.close_rounded,
-                      color: colors.textTertiary,
-                      size: 22,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Icon(
-                      Icons.search_rounded,
-                      color: colors.textTertiary,
-                      size: 52,
-                    ),
-                    SizedBox(height: dimens.space4),
-                    Text(
-                      '종목을 검색해 보세요',
-                      style: TextStyle(
-                        color: colors.textSecondary,
-                        fontSize: 19,
-                        fontWeight: AppTypography.bold,
-                        height: 22 / 19,
-                      ),
-                    ),
-                    SizedBox(height: dimens.space3),
-                    Text(
-                      '종목명 또는 종목코드 6자리로\n검색하실 수 있습니다.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: colors.textTertiary,
-                        fontSize: 11,
-                        fontWeight: AppTypography.regular,
-                        height: 14 / 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            AppBottomTabBar(
-              selectedTab: AppTab.search,
-              onWatchlistTap: () => Navigator.of(context).pop(),
             ),
           ],
         ),
