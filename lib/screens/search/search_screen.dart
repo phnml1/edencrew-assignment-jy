@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../data/sample_stock_data.dart';
 import '../../models/models.dart';
 import '../../theme/theme.dart';
 import '../../widgets/app_bottom_tab_bar.dart';
+import '../detail/stock_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({
@@ -62,6 +64,30 @@ class _SearchScreenState extends State<SearchScreen> {
       FavoriteChange(stock: stock, isFavorite: willFavorite),
     );
     _showFavoriteMessage(willFavorite);
+  }
+
+  void _applyFavoriteChange(FavoriteChange change) {
+    setState(() {
+      if (change.isFavorite) {
+        _favoriteSymbols.add(change.stock.symbol);
+      } else {
+        _favoriteSymbols.remove(change.stock.symbol);
+      }
+    });
+
+    widget.onFavoriteChanged(change);
+  }
+
+  void _openDetail(Stock stock) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => StockDetailScreen(
+          detail: sampleStockDetailFor(stock),
+          isFavorite: _favoriteSymbols.contains(stock.symbol),
+          onFavoriteChanged: _applyFavoriteChange,
+        ),
+      ),
+    );
   }
 
   void _showFavoriteMessage(bool isFavorite) {
@@ -128,6 +154,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       query: _query,
                       results: results,
                       favoriteSymbols: _favoriteSymbols,
+                      onStockTap: _openDetail,
                       onFavoriteTap: _toggleFavorite,
                     ),
             ),
@@ -140,13 +167,6 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
-}
-
-class FavoriteChange {
-  const FavoriteChange({required this.stock, required this.isFavorite});
-
-  final Stock stock;
-  final bool isFavorite;
 }
 
 class SearchField extends StatelessWidget {
@@ -333,6 +353,7 @@ class SearchResultList extends StatelessWidget {
     required this.query,
     required this.results,
     required this.favoriteSymbols,
+    required this.onStockTap,
     required this.onFavoriteTap,
     super.key,
   });
@@ -340,6 +361,7 @@ class SearchResultList extends StatelessWidget {
   final String query;
   final List<Stock> results;
   final Set<String> favoriteSymbols;
+  final ValueChanged<Stock> onStockTap;
   final ValueChanged<Stock> onFavoriteTap;
 
   @override
@@ -353,6 +375,7 @@ class SearchResultList extends StatelessWidget {
           stock: stock,
           query: query,
           isFavorite: favoriteSymbols.contains(stock.symbol),
+          onTap: () => onStockTap(stock),
           onFavoriteTap: () => onFavoriteTap(stock),
         );
       },
@@ -365,6 +388,7 @@ class SearchResultRow extends StatelessWidget {
     required this.stock,
     required this.query,
     required this.isFavorite,
+    required this.onTap,
     required this.onFavoriteTap,
     super.key,
   });
@@ -372,6 +396,7 @@ class SearchResultRow extends StatelessWidget {
   final Stock stock;
   final String query;
   final bool isFavorite;
+  final VoidCallback onTap;
   final VoidCallback onFavoriteTap;
 
   @override
@@ -379,69 +404,72 @@ class SearchResultRow extends StatelessWidget {
     final AppColors colors = context.colors;
     final AppDimens dimens = context.dimens;
 
-    return Container(
-      constraints: BoxConstraints(minHeight: dimens.rowMinHeight),
-      padding: EdgeInsets.symmetric(
-        horizontal: dimens.space4,
-        vertical: dimens.space3,
-      ),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: colors.borderSubtle,
-            width: dimens.borderHairline,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        constraints: BoxConstraints(minHeight: dimens.rowMinHeight),
+        padding: EdgeInsets.symmetric(
+          horizontal: dimens.space4,
+          vertical: dimens.space3,
+        ),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: colors.borderSubtle,
+              width: dimens.borderHairline,
+            ),
           ),
         ),
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                RichText(
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  text: TextSpan(
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: AppTypography.medium,
-                      height: 20 / 15,
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  RichText(
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    text: TextSpan(
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 15,
+                        fontWeight: AppTypography.medium,
+                        height: 20 / 15,
+                      ),
+                      children: _highlightName(stock.name, query, colors),
                     ),
-                    children: _highlightName(stock.name, query, colors),
                   ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  stock.symbolWithMarket,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: colors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: AppTypography.regular,
-                    height: 14 / 11,
+                  SizedBox(height: 2),
+                  Text(
+                    stock.symbolWithMarket,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 11,
+                      fontWeight: AppTypography.regular,
+                      height: 14 / 11,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          SizedBox(width: dimens.space3),
-          IconButton(
-            onPressed: onFavoriteTap,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-            icon: Icon(
-              isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-              color: isFavorite
-                  ? colors.favoriteActive
-                  : colors.favoriteInactive,
-              size: 28,
+            SizedBox(width: dimens.space3),
+            IconButton(
+              onPressed: onFavoriteTap,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+              icon: Icon(
+                isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+                color: isFavorite
+                    ? colors.favoriteActive
+                    : colors.favoriteInactive,
+                size: 28,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -464,15 +492,4 @@ class SearchResultRow extends StatelessWidget {
   }
 }
 
-const List<Stock> _searchStocks = <Stock>[
-  Stock(symbol: '005930', name: '삼성전자', market: '코스피'),
-  Stock(symbol: '005935', name: '삼성전자우', market: '코스피'),
-  Stock(symbol: '207940', name: '삼성바이오로직스', market: '코스피'),
-  Stock(symbol: '018260', name: '삼성에스디에스', market: '코스피'),
-  Stock(symbol: '010140', name: '삼성중공업', market: '코스피'),
-  Stock(symbol: '028260', name: '삼성물산', market: '코스피'),
-  Stock(symbol: '000660', name: 'SK하이닉스', market: '코스피'),
-  Stock(symbol: '035720', name: '카카오', market: '코스피'),
-  Stock(symbol: '247540', name: '에코프로비엠', market: '코스닥'),
-  Stock(symbol: '373220', name: 'LG에너지솔루션', market: '코스피'),
-];
+const List<Stock> _searchStocks = sampleStocks;

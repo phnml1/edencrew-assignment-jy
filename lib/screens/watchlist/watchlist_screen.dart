@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../data/sample_stock_data.dart';
 import '../../models/models.dart';
 import '../../theme/theme.dart';
 import '../../utils/utils.dart';
 import '../../widgets/app_bottom_tab_bar.dart';
+import '../detail/stock_detail_screen.dart';
 import '../search/search_screen.dart';
 
 class WatchlistScreen extends StatefulWidget {
@@ -191,6 +193,18 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     });
   }
 
+  void _openDetail(WatchlistEntry entry) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => StockDetailScreen(
+          detail: sampleStockDetailFor(entry.stock),
+          isFavorite: true,
+          onFavoriteChanged: _handleFavoriteChanged,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final AppColors colors = context.colors;
@@ -210,7 +224,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
             Expanded(
               child: _items.isEmpty
                   ? const WatchlistEmptyState()
-                  : WatchlistList(items: _items),
+                  : WatchlistList(items: _items, onItemTap: _openDetail),
             ),
             AppBottomTabBar(
               selectedTab: AppTab.watchlist,
@@ -332,9 +346,14 @@ class WatchlistHeader extends StatelessWidget {
 }
 
 class WatchlistList extends StatelessWidget {
-  const WatchlistList({required this.items, super.key});
+  const WatchlistList({
+    required this.items,
+    required this.onItemTap,
+    super.key,
+  });
 
   final List<WatchlistEntry> items;
+  final ValueChanged<WatchlistEntry> onItemTap;
 
   @override
   Widget build(BuildContext context) {
@@ -342,16 +361,18 @@ class WatchlistList extends StatelessWidget {
       padding: EdgeInsets.zero,
       itemCount: items.length,
       itemBuilder: (BuildContext context, int index) {
-        return WatchlistRow(entry: items[index]);
+        final WatchlistEntry entry = items[index];
+        return WatchlistRow(entry: entry, onTap: () => onItemTap(entry));
       },
     );
   }
 }
 
 class WatchlistRow extends StatelessWidget {
-  const WatchlistRow({required this.entry, super.key});
+  const WatchlistRow({required this.entry, required this.onTap, super.key});
 
   final WatchlistEntry entry;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -359,59 +380,62 @@ class WatchlistRow extends StatelessWidget {
     final AppDimens dimens = context.dimens;
     final StockQuote? quote = entry.quote;
 
-    return Container(
-      constraints: BoxConstraints(minHeight: dimens.rowMinHeight),
-      padding: EdgeInsets.symmetric(
-        horizontal: dimens.space4,
-        vertical: dimens.space3,
-      ),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: colors.borderSubtle,
-            width: dimens.borderHairline,
-          ),
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        constraints: BoxConstraints(minHeight: dimens.rowMinHeight),
+        padding: EdgeInsets.symmetric(
+          horizontal: dimens.space4,
+          vertical: dimens.space3,
         ),
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(
-                  entry.stock.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: colors.textPrimary,
-                    fontSize: 15,
-                    fontWeight: AppTypography.medium,
-                    height: 20 / 15,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  entry.stock.symbolWithMarket,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: colors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: AppTypography.regular,
-                    height: 14 / 11,
-                  ),
-                ),
-              ],
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: colors.borderSubtle,
+              width: dimens.borderHairline,
             ),
           ),
-          SizedBox(width: dimens.space3),
-          if (entry.isQuoteLoading || quote == null)
-            const QuoteSkeleton()
-          else
-            QuoteText(quote: quote),
-        ],
+        ),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    entry.stock.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: AppTypography.medium,
+                      height: 20 / 15,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    entry.stock.symbolWithMarket,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 11,
+                      fontWeight: AppTypography.regular,
+                      height: 14 / 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: dimens.space3),
+            if (entry.isQuoteLoading || quote == null)
+              const QuoteSkeleton()
+            else
+              QuoteText(quote: quote),
+          ],
+        ),
       ),
     );
   }
