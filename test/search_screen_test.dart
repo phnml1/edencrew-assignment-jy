@@ -1,4 +1,5 @@
 import 'package:edencrew_assignment_starter/models/models.dart';
+import 'package:edencrew_assignment_starter/repositories/stock_search_repository.dart';
 import 'package:edencrew_assignment_starter/screens/search/search_screen.dart';
 import 'package:edencrew_assignment_starter/theme/theme.dart';
 import 'package:flutter/material.dart';
@@ -8,12 +9,14 @@ void main() {
   Widget buildSearchScreen({
     Set<String> favoriteSymbols = const <String>{},
     ValueChanged<FavoriteChange>? onFavoriteChanged,
+    StockSearchRepository? searchRepository,
   }) {
     return MaterialApp(
       theme: AppTheme.dark,
       home: SearchScreen(
         favoriteSymbols: favoriteSymbols,
         onFavoriteChanged: onFavoriteChanged ?? (_) {},
+        searchRepository: searchRepository ?? const _FakeSearchRepository(),
       ),
     );
   }
@@ -31,6 +34,7 @@ void main() {
     );
 
     await tester.enterText(find.byType(TextField), '삼성');
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pump();
 
     expect(find.text('005930 · 코스피'), findsOneWidget);
@@ -42,6 +46,7 @@ void main() {
     await tester.pumpWidget(buildSearchScreen());
 
     await tester.enterText(find.byType(TextField), 'ㄱㄴㄷㄹㅁㅂㅅ');
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pump();
 
     expect(find.text('검색 결과가 없습니다'), findsOneWidget);
@@ -60,6 +65,7 @@ void main() {
     );
 
     await tester.enterText(find.byType(TextField), '삼성');
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pump();
     await tester.tap(find.byIcon(Icons.star_border_rounded).first);
     await tester.pump();
@@ -78,4 +84,32 @@ void main() {
       const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   });
+}
+
+class _FakeSearchRepository implements StockSearchRepository {
+  const _FakeSearchRepository();
+
+  static const List<Stock> _stocks = <Stock>[
+    Stock(symbol: '005930', name: '삼성전자', market: '코스피'),
+    Stock(symbol: '005935', name: '삼성전자우', market: '코스피'),
+    Stock(symbol: '207940', name: '삼성바이오로직스', market: '코스피'),
+    Stock(symbol: '018260', name: '삼성에스디에스', market: '코스피'),
+    Stock(symbol: '010140', name: '삼성중공업', market: '코스피'),
+    Stock(symbol: '028260', name: '삼성물산', market: '코스피'),
+  ];
+
+  @override
+  Future<List<Stock>> search(String query) async {
+    final String normalizedQuery = query.trim();
+    if (normalizedQuery.isEmpty) {
+      return const <Stock>[];
+    }
+
+    return _stocks
+        .where((Stock stock) {
+          return stock.name.contains(normalizedQuery) ||
+              stock.symbol.contains(normalizedQuery);
+        })
+        .toList(growable: false);
+  }
 }

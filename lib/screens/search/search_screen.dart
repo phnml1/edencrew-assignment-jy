@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../data/sample_stock_data.dart';
 import '../../models/models.dart';
+import '../../repositories/stock_search_repository.dart';
 import '../../theme/theme.dart';
 import '../../widgets/app_bottom_tab_bar.dart';
 import '../../widgets/favorite_snack_bar.dart';
@@ -12,10 +15,13 @@ class SearchScreen extends StatefulWidget {
     required this.favoriteSymbols,
     required this.onFavoriteChanged,
     super.key,
-  });
+    StockSearchRepository? searchRepository,
+  }) : searchRepository =
+           searchRepository ?? const NaverStockSearchRepository();
 
   final Set<String> favoriteSymbols;
   final ValueChanged<FavoriteChange> onFavoriteChanged;
+  final StockSearchRepository searchRepository;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -24,6 +30,10 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   late final TextEditingController _controller;
   late final Set<String> _favoriteSymbols;
+  Timer? _searchDebounce;
+  List<Stock> _results = const <Stock>[];
+  bool _isSearching = false;
+  int _searchRequestId = 0;
   String _query = '';
 
   @override
@@ -35,19 +45,58 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
   void _changeQuery(String value) {
+    final String query = value.trim();
+    _searchDebounce?.cancel();
+    _searchRequestId += 1;
+
     setState(() {
-      _query = value.trim();
+      _query = query;
+      _results = const <Stock>[];
+      _isSearching = query.isNotEmpty;
+    });
+
+    if (query.isEmpty) {
+      return;
+    }
+
+    final int requestId = _searchRequestId;
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+      _loadResults(query, requestId);
     });
   }
 
   void _clearQuery() {
     _controller.clear();
     _changeQuery('');
+  }
+
+  Future<void> _loadResults(String query, int requestId) async {
+    try {
+      final List<Stock> results = await widget.searchRepository.search(query);
+      if (!mounted || requestId != _searchRequestId) {
+        return;
+      }
+
+      setState(() {
+        _results = results;
+        _isSearching = false;
+      });
+    } on Object {
+      if (!mounted || requestId != _searchRequestId) {
+        return;
+      }
+
+      setState(() {
+        _results = const <Stock>[];
+        _isSearching = false;
+      });
+    }
   }
 
   void _toggleFavorite(Stock stock) {
@@ -95,16 +144,6 @@ class _SearchScreenState extends State<SearchScreen> {
     showFavoriteSnackBar(context, isFavorite: isFavorite, bottomMargin: 109);
   }
 
-  List<Stock> get _results {
-    if (_query.isEmpty) {
-      return const <Stock>[];
-    }
-
-    return _searchStocks.where((Stock stock) {
-      return stock.name.contains(_query) || stock.symbol.contains(_query);
-    }).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     final AppColors colors = context.colors;
@@ -124,6 +163,8 @@ class _SearchScreenState extends State<SearchScreen> {
             Expanded(
               child: _query.isEmpty
                   ? const SearchInitialState()
+                  : _isSearching
+                  ? const SearchLoadingState()
                   : results.isEmpty
                   ? SearchNoResultState(query: _query)
                   : SearchResultList(
@@ -139,6 +180,25 @@ class _SearchScreenState extends State<SearchScreen> {
               onWatchlistTap: () => Navigator.of(context).pop(),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class SearchLoadingState extends StatelessWidget {
+  const SearchLoadingState({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final AppColors colors = context.colors;
+
+    return Center(
+      child: SizedBox.square(
+        dimension: 24,
+        child: CircularProgressIndicator(
+          color: colors.textTertiary,
+          strokeWidth: 2,
         ),
       ),
     );
@@ -467,5 +527,3 @@ class SearchResultRow extends StatelessWidget {
     ];
   }
 }
-
-const List<Stock> _searchStocks = sampleStocks;
